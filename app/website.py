@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, Response
+from flask import Flask, render_template, request, Response, jsonify
 import json
 import sqlite3
 import datetime
@@ -7,8 +7,9 @@ from typing import List, Optional
 import time
 
 # Load database into memory
-print('Loading database into memory...')
 source = sqlite3.connect('data/combined/combined.db', check_same_thread=False)
+#cursor = source.cursor()
+print('Loading database into memory...')
 connection = sqlite3.connect(':memory:', check_same_thread=False)
 source.backup(connection)
 cursor = connection.cursor()
@@ -20,9 +21,41 @@ app.config["DEBUG"] = True
 def main():
     return render_template('home.html')
 
-@app.route("/houses", methods=["GET"])
+@app.route("/api/docs")
+def docs():
+
+    docs = {
+        '/api/houses': {
+            'Args': [
+                "price_min", 
+                "price_max",
+                "date_min",
+                "date_max",
+                "is_new",
+                "was_new",
+                "postcode",
+                "paon",
+                "saon",
+                "street",
+                "locality",
+                "town_city",
+                "district",
+                "county",
+                "ppd_category_type",
+                "record_status",
+                "latitude",
+                "longitude",
+                "start",
+                "length",
+            ]
+        }
+    }
+
+    return jsonify(docs)
+
+@app.route("/api/houses", methods=["GET"])
 def houses():
-    return Response(GetHouses(json.loads(json.dumps(request.args))), mimetype="application/json")
+    return jsonify(GetHouses(json.loads(json.dumps(request.args))))
 
 def GetHouses(parameters: dict) -> str:
 
@@ -65,8 +98,6 @@ def GetHouses(parameters: dict) -> str:
     _date_min = parameters.get("date_min")
     _date_max = parameters.get("date_max")
     _is_new = parameters.get("is_new")
-    _min_num_transactions = parameters.get("min_num_transactions")
-    _max_num_transactions = parameters.get("max_num_transactions")
     _postcode = parameters.get("postcode")
     _paon = parameters.get("paon")
     _saon = parameters.get("saon")
@@ -83,13 +114,11 @@ def GetHouses(parameters: dict) -> str:
     _length = parameters.get("length", 100)
 
     filters = [
-        { "Name": "price_min", "Value": _price_min, "Type": "Integer", "Operator": ">=" },
-        { "Name": "price_max", "Value": _price_max, "Type": "Integer", "Operator": "<=" },
-        { "Name": "date_min", "Value": _date_min, "Type": "Date", "Operator": ">=" },
-        { "Name": "date_max", "Value": _date_max, "Type": "Date", "Operator": "<=" },
+        { "Name": "price", "Value": _price_min, "Type": "Integer", "Operator": ">=" },
+        { "Name": "price", "Value": _price_max, "Type": "Integer", "Operator": "<=" },
+        { "Name": "date", "Value": _date_min, "Type": "Date", "Operator": ">=" },
+        { "Name": "date", "Value": _date_max, "Type": "Date", "Operator": "<=" },
         { "Name": "is_new", "Value": _is_new, "Type": "Boolean" },
-        { "Name": "min_num_transactions", "Value": _min_num_transactions, "Type": "Integer", "Operator": ">=" },
-        { "Name": "max_num_transactions", "Value": _max_num_transactions, "Type": "Integer", "Operator": "<=" },
         { "Name": "postcode", "Value": _postcode, "Type": "String" },
         { "Name": "paon", "Value": _paon, "Type": "String" },
         { "Name": "saon", "Value": _saon, "Type": "String" },
@@ -144,7 +173,7 @@ def GetHouses(parameters: dict) -> str:
 
                 filter_operator = filter["Operator"]
 
-                dynamic_filter_string += f"CAST ({filter_name} AS DATE) {filter_operator} ?"
+                dynamic_filter_string += f"{filter_name} {filter_operator} ?"
                 values.append(filter_value)
                 isFirst = False
                 
@@ -162,7 +191,15 @@ def GetHouses(parameters: dict) -> str:
                 isFirst = False
 
     # Get data which matches the filters
-    cursor.execute(f"SELECT * FROM combined {dynamic_filter_string} LIMIT {_length} OFFSET {_start}", values)
+    query_string = f"SELECT * FROM combined {dynamic_filter_string}"
+
+    if _length != 'all':
+        query_string += f" LIMIT {_length}"
+    
+    if _start:
+        query_string += f" OFFSET {_start}"
+    
+    cursor.execute(query_string, values)
     
     # Get results
     results = [dict((cursor.description[i][0], value) for i, value in enumerate(row)) for row in cursor.fetchall()]
@@ -211,13 +248,11 @@ def GetHouses(parameters: dict) -> str:
             )
         )
 
-        houses.append(house)
-
     # Calculate response time in milliseconds as an integer
     response_time = f"{int((time.time() - start_time) * 1000)}ms"
 
     # Return json
-    return json.dumps(json.loads(HousesResponse(houses=houses, response_time=response_time).json()))
+    return json.loads(HousesResponse(houses=houses, response_time=response_time).json())
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
