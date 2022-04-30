@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, Response, jsonify
+from flask import Flask, render_template, request, jsonify
 import json
 import sqlite3
 import datetime
@@ -7,15 +7,13 @@ from typing import List, Optional
 import time
 
 # Load database into memory
-source = sqlite3.connect('data/combined/combined.db', check_same_thread=False)
-#cursor = source.cursor()
 print('Loading database into memory...')
+source = sqlite3.connect('data/combined/combined.db', check_same_thread=False)
 connection = sqlite3.connect(':memory:', check_same_thread=False)
 source.backup(connection)
 cursor = connection.cursor()
 
 app = Flask(__name__)
-app.config["DEBUG"] = True
 
 @app.route("/")
 def main():
