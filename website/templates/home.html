@@ -277,7 +277,27 @@
             <!-- Latitude -->
             <!-- Longitude -->
             <!-- Start -->
+
             <!-- Length -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-length')">
+                    <div class="float-left select-none grow">Number of Results</div>
+                    <i id="filter-length-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-length-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="length-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Number of results...">
+                    </div>
+
+                </div>
+
+            </div>
 
             <div class="flex p-3">
 
@@ -360,16 +380,13 @@
 
             // Get args from inputs
             let args = GetArgsFromInputs();
-            console.log(args);
 
             // Update url
             UpdateURL(args);
 
             try {
                 await GetTransactionsAndAddHouses(args);
-            } catch (e) {
-                console.log(e);
-            }
+            } catch (e) {}
 
             // Hide the loading icon and show the search button
             document.getElementById('search-button').classList.remove('hidden');
@@ -463,8 +480,8 @@
             }
 
             // Set town/city
-            if (args.town != null) {
-                document.getElementById('towncity-input').value = args.town;
+            if (args.town_city != null) {
+                document.getElementById('towncity-input').value = args.town_city;
             } else {
                 document.getElementById('towncity-input').value = "";
             }
@@ -481,6 +498,13 @@
                 document.getElementById('county-input').value = args.county;
             } else {
                 document.getElementById('county-input').value = "";
+            }
+
+            // Set length
+            if (args.length != null) {
+                document.getElementById('length-input').value = args.length;
+            } else {
+                document.getElementById('length-input').value = "";
             }
         }
 
@@ -525,20 +549,24 @@
             // Get county
             var county = document.getElementById('county-input').value;
 
+            // Get length
+            var length = document.getElementById('length-input').value;
+
             let args = {
                 min_price: minPrice,
                 max_price: maxPrice,
-                min_date: minDate,
-                max_date: maxDate,
+                date_min: minDate,
+                date_max: maxDate,
                 is_new: isNew,
                 postcode: postcode,
                 paon: paon,
                 saon: saon,
                 street: street,
                 locality: locality,
-                towncity: towncity,
+                town_city: towncity,
                 district: district,
-                county: county
+                county: county,
+                length: length
             };
 
             return args;
@@ -615,9 +643,6 @@
         // Get transactions from api
         async function GetTransactionsAndAddHouses(args) {
 
-            // Add length to args
-            args.length = "50000";
-
             // Create query string from arguments
             var query = CreateQueryString(args);
 
@@ -691,7 +716,9 @@
             // Delete all markers
             markers.clearLayers();
 
-            markers = L.markerClusterGroup();
+            markers = L.markerClusterGroup({
+                removeOutsideVisibleBounds: true
+            });
 
             // Loop through houses
             for (var i = 0; i < houses.length; i++) {

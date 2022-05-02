@@ -103,7 +103,7 @@ def GetTransactions(parameters: dict) -> str:
     _latitude = parameters.get("latitude")
     _longitude = parameters.get("longitude")
     _start = parameters.get("start", 0)
-    _length = parameters.get("length", 100)
+    _length = parameters.get("length", 10000)
 
     filters = [
         { "Name": "postcode", "Value": _postcode, "Type": "String" },
@@ -148,16 +148,16 @@ def GetTransactions(parameters: dict) -> str:
                 filter_value = int(filter_value)
                 filter_operator = filter["Operator"]
 
-                dynamic_filter_string += f"CAST ({filter_name} AS INTEGER) {filter_operator} ?"
+                dynamic_filter_string += f"{filter_name} {filter_operator} ?"
                 values.append(filter_value)
                 isFirst = False
 
-            if filter["Type"] == "Float":
+            elif filter["Type"] == "Float":
 
                 filter_value = float(filter_value)
                 filter_operator = filter["Operator"]
 
-                dynamic_filter_string += f"CAST ({filter_name} AS FLOAT) {filter_operator} ?"
+                dynamic_filter_string += f"{filter_name} {filter_operator} ?"
                 values.append(filter_value)
                 isFirst = False
                 
