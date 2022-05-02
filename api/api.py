@@ -7,7 +7,11 @@ from pydantic import BaseModel
 from typing import List, Optional, Union
 import time
 
-connection = sqlite3.connect('/data/database.db', check_same_thread=False)
+# Load database into memory
+print('Loading database into memory...')
+source = sqlite3.connect('/data/database.db', check_same_thread=False)
+connection = sqlite3.connect(':memory:', check_same_thread=False)
+source.backup(connection)
 
 app = Flask(__name__)
 CORS(app)

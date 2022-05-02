@@ -2,13 +2,20 @@
 <html>
 
 <head>
-    <title>Custom Tile Server</title>
+    <title>House/Sales Search</title>
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css">
 
     <style>
         html,
@@ -22,26 +29,563 @@
     </style>
 </head>
 
-<body>
+<body class="overflow-hidden">
+
+    <div id="sidebar" class="absolute top-0 left-0 right-0 h-screen py-3 w-fit pointer-events-none inline-flex" style="z-index: 500;">
+
+        <div id="sidebar-content" class="shadow-md sm:rounded-lg w-fit h-fit flex-none text-gray-700 bg-white overflow-y-auto max-h-full pointer-events-auto ml-3" style="z-index: 501;">
+
+            <div class=" text-xl text-gray-800  font-semibold text-center mb-2 mt-2" style="width: 17.5rem;">Search Houses/Sales</div>
+
+            <!-- Price Min-Max -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 hidden">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-price')">
+                    <div class="float-left select-none grow">Price</div>
+                    <i id="filter-price-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-price-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-4">
+                        <label for="min-price-input" class="block mb-1.5 text-sm font-medium text-gray-900 ">Minimum</label>
+                        <input type="text" id="min-price-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5       " placeholder="(any)">
+                    </div>
+
+                    <div class="relative mb-2">
+                        <label for="max-price-input" class="block mb-1.5 text-sm font-medium text-gray-900 ">Maximum</label>
+                        <input type="text" id="max-price-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5       " placeholder="(any)">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Date Min-Max -->
+            <div class="w-full border-y border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-date')">
+                    <div class="float-left select-none grow">Date</div>
+                    <i id="filter-date-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-date-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-4">
+                        <label for="min-date-input" class="block mb-1.5 text-sm font-medium text-gray-900 ">Minimum</label>
+                        <input type="text" id="min-date-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5       " placeholder="(any) YYYY-MM-DD">
+                    </div>
+
+                    <div class="relative mb-2">
+                        <label for="max-date-input" class="block mb-1.5 text-sm font-medium text-gray-900 ">Maximum</label>
+                        <input type="text" id="max-date-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-1.5       " placeholder="(any) YYYY-MM-DD">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Is New -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-isnew')">
+                    <div class="float-left select-none grow">Is New</div>
+                    <i id="filter-isnew-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-isnew-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="flex items-center mb-4">
+                        <input id="isnew-checkbox" aria-describedby="isnew-checkbox" type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 rounded border-gray-300 focus:ring-blue-500   focus:ring-2  ">
+                        <label for="isnew-checkbox" class="ml-3 text-sm font-medium text-gray-900 ">True</label>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Postcode -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-postcode')">
+                    <div class="float-left select-none grow">Postcode</div>
+                    <i id="filter-postcode-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-postcode-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="postcode-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter postcodes...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Paon -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-paon')">
+                    <div class="float-left select-none grow">Paon</div>
+                    <i id="filter-paon-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-paon-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="paon-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter paons...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Saon -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-saon')">
+                    <div class="float-left select-none grow">Saon</div>
+                    <i id="filter-saon-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-saon-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="saon-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter saons...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Street -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-street')">
+                    <div class="float-left select-none grow">Street</div>
+                    <i id="filter-street-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-street-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="street-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter streets...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Locality -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-locality')">
+                    <div class="float-left select-none grow">Locality</div>
+                    <i id="filter-locality-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-locality-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="locality-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter localities...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Town City -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-towncity')">
+                    <div class="float-left select-none grow">Town/City</div>
+                    <i id="filter-towncity-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-towncity-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="towncity-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter towns/cities...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- District -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-district')">
+                    <div class="float-left select-none grow">District</div>
+                    <i id="filter-district-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-district-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="district-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter districts...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- County -->
+            <div class="w-full border-b border-solid items-start border-neutral-300 ">
+
+                <div class="w-full px-3 py-2 cursor-pointer items-center flex hover:text-blue-500 " onclick="ToggleDropdown('filter-county')">
+                    <div class="float-left select-none grow">County</div>
+                    <i id="filter-county-icon" class="fa fa-chevron-right float-right" style="width: 1.5em; text-align: right;"></i>
+                </div>
+
+                <div id="filter-county-dropdown" class="w-full px-4 py-2 hidden w-fit">
+
+                    <div class="relative mb-2">
+                        <div class="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search"></i>
+                        </div>
+                        <input type="text" id="county-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-1.5       " placeholder="Filter counties...">
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- PPD Category Type -->
+            <!-- Record Status -->
+            <!-- Latitude -->
+            <!-- Longitude -->
+            <!-- Start -->
+            <!-- Length -->
+
+            <div class="flex p-3">
+
+                <button id="search-button" type="button" class="mx-auto grow block text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-2.5 py-1.5 mr-2" onclick="Search()">Search</button>
+                <button id="search-button-loading" disabled type="button" class="flex mx-auto grow text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-sm px-2.5 py-1.5 mr-2 inline-flex items-center inline hidden">
+                    <div class="flex justify-center items-center w-full">
+                        <svg role="status" class="inline w-4 h-4 mr-3 text-white animate-spin" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="#E5E7EB"/>
+                            <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentColor"/>
+                            </svg>
+                        <div class="">
+                            Loading...
+                        </div>
+                    </div>
+                </button>
+
+                <button type="button" class="mx-auto grow block text-white bg-amber-700 hover:bg-amber-800 font-medium rounded-lg text-sm px-2.5 py-1.5 ml-2" onclick="ClearAllURLArgs()">Reset</button>
+
+            </div>
+
+        </div>
+
+        <!-- Toggle for sidebar -->
+        <div class="relative pointer-events-auto right-2" onclick="ToggleSidebar()">
+            <button id="sidebar-toggle" class="shadow-md flex items-center justify-center text-white bg-neutral-500 hover:bg-neutral-600 font-medium rounded-r-lg text-sm pl-4 pr-2 py-2">
+                <i id="sidebar-toggle-icon" class="fa fa-chevron-left"></i>
+            </button>
+        </div>
+
+    </div>
+
     <div id="map"></div>
 
     <script>
+        function ToggleDropdown(id) {
+            ToggleVisibility(`${ id }-dropdown`);
+            ToggleIcon(`${ id }-icon`);
+
+        }
+
+        function ToggleVisibility(id) {
+            var element = document.getElementById(id);
+            if (element.classList.contains('hidden')) {
+                element.classList.remove('hidden');
+            } else {
+                element.classList.add('hidden');
+            }
+        }
+
+        function ToggleIcon(id, original = "fa-chevron-right", flipped = "fa-chevron-down") {
+            var element = document.getElementById(id);
+            if (element.classList.contains(flipped)) {
+                element.classList.remove(flipped);
+                element.classList.add(original);
+            } else {
+                element.classList.remove(original);
+                element.classList.add(flipped);
+            }
+        }
+
+        function ToggleSidebar() {
+            ToggleVisibility('sidebar-content');
+            ToggleIcon('sidebar-toggle-icon', "fa-chevron-right", "fa-chevron-left");
+
+        }
+
+        async function Sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function Search() {
+
+            // Hide the search button and show the loading icon
+            document.getElementById('search-button').classList.add('hidden');
+            document.getElementById('search-button-loading').classList.remove('hidden');
+
+            // Change to loading cursor for body and map
+            document.body.style.cursor = "wait";
+            document.getElementById('map').style.cursor = "wait";
+
+            // Get args from inputs
+            let args = GetArgsFromInputs();
+            console.log(args);
+
+            // Update url
+            UpdateURL(args);
+
+            try {
+                await GetTransactionsAndAddHouses(args);
+            } catch (e) {
+                console.log(e);
+            }
+
+            // Hide the loading icon and show the search button
+            document.getElementById('search-button').classList.remove('hidden');
+            document.getElementById('search-button-loading').classList.add('hidden');
+
+            // Change to default cursor for body and map
+            document.body.style.cursor = "default";
+            document.getElementById('map').style.cursor = "default";
+        }
+
+        function ClearAllURLArgs() {
+            UpdateURL({});
+            SetInputsFromArgs();
+        }
+
+        function SetInputsFromArgs() {
+
+            // Get args from url
+            let args = GetUrlArgs();
+
+            // Set inputs
+
+            // Set min price
+            if (args.min_price != null) {
+                document.getElementById('min-price-input').value = args.min_price;
+            } else {
+                document.getElementById('min-price-input').value = "";
+            }
+
+            // Set max price
+            if (args.max_price != null) {
+                document.getElementById('max-price-input').value = args.max_price;
+            } else {
+                document.getElementById('max-price-input').value = "";
+            }
+
+            // Set min date
+            if (args.min_date != null) {
+                document.getElementById('min-date-input').value = args.min_date;
+            } else {
+                document.getElementById('min-date-input').value = "";
+            }
+
+            // Set max date
+            if (args.max_date != null) {
+                document.getElementById('max-date-input').value = args.max_date;
+            } else {
+                document.getElementById('max-date-input').value = "";
+            }
+
+            // Set is new
+            if (args.is_new != null) {
+                document.getElementById('isnew-checkbox').checked = args.is_new == "True";
+            } else {
+                document.getElementById('isnew-checkbox').checked = false;
+            }
+
+            // Set postcode
+            if (args.postcode != null) {
+                document.getElementById('postcode-input').value = args.postcode;
+            } else {
+                document.getElementById('postcode-input').value = "";
+            }
+
+            // Set paon
+            if (args.paon != null) {
+                document.getElementById('paon-input').value = args.paon;
+            } else {
+                document.getElementById('paon-input').value = "";
+            }
+
+            // Set saon
+            if (args.saon != null) {
+                document.getElementById('saon-input').value = args.saon;
+            } else {
+                document.getElementById('saon-input').value = "";
+            }
+
+            // Set street
+            if (args.street != null) {
+                document.getElementById('street-input').value = args.street;
+            } else {
+                document.getElementById('street-input').value = "";
+            }
+
+            // Set locality
+            if (args.locality != null) {
+                document.getElementById('locality-input').value = args.locality;
+            } else {
+                document.getElementById('locality-input').value = "";
+            }
+
+            // Set town/city
+            if (args.town != null) {
+                document.getElementById('towncity-input').value = args.town;
+            } else {
+                document.getElementById('towncity-input').value = "";
+            }
+
+            // Set district
+            if (args.district != null) {
+                document.getElementById('district-input').value = args.district;
+            } else {
+                document.getElementById('district-input').value = "";
+            }
+
+            // Set county
+            if (args.county != null) {
+                document.getElementById('county-input').value = args.county;
+            } else {
+                document.getElementById('county-input').value = "";
+            }
+        }
+
+        function GetArgsFromInputs() {
+
+            // Get min price
+            var minPrice = document.getElementById('min-price-input').value;
+
+            // Get max price
+            var maxPrice = document.getElementById('max-price-input').value;
+
+            // Get min date
+            var minDate = document.getElementById('min-date-input').value;
+
+            // Get max date
+            var maxDate = document.getElementById('max-date-input').value;
+
+            // Get is new
+            var isNew = document.getElementById('isnew-checkbox').checked ? "True" : "";
+
+            // Get postcode
+            var postcode = document.getElementById('postcode-input').value;
+
+            // Get paon
+            var paon = document.getElementById('paon-input').value;
+
+            // Get saon
+            var saon = document.getElementById('saon-input').value;
+
+            // Get street
+            var street = document.getElementById('street-input').value;
+
+            // Get locality
+            var locality = document.getElementById('locality-input').value;
+
+            // Get town/city
+            var towncity = document.getElementById('towncity-input').value;
+
+            // Get district
+            var district = document.getElementById('district-input').value;
+
+            // Get county
+            var county = document.getElementById('county-input').value;
+
+            let args = {
+                min_price: minPrice,
+                max_price: maxPrice,
+                min_date: minDate,
+                max_date: maxDate,
+                is_new: isNew,
+                postcode: postcode,
+                paon: paon,
+                saon: saon,
+                street: street,
+                locality: locality,
+                towncity: towncity,
+                district: district,
+                county: county
+            };
+
+            return args;
+        }
+    </script>
+
+    <script>
         var map = L.map('map', {
-            preferCanvas: true,
+            zoomControl: false,
         }).setView([55.7, -2.4234211], 6);
 
         L.control.zoom({
-            position: 'bottomright'
+            position: 'bottomright',
         }).addTo(map);
 
         L.tileLayer('https://osm.house-age-search.rggs.xyz/tile/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
-            id: 'base'
+            id: 'base',
+            position: 'bottomright',
         }).addTo(map);
 
         var scale = L.control.scale();
         scale.addTo(map);
+
+        // Update url with args without reloading page
+        function UpdateURL(args) {
+
+            // Get current url without args
+            let url = window.location.href;
+            let url_parts = url.split('?');
+            let base_url = url_parts[0];
+
+            // Remove null or empty string args
+            for (let key in args) {
+                if (args[key] == null || args[key] == "") {
+                    delete args[key];
+                }
+            }
+
+            url = new URL(base_url);
+            let query = CreateQueryString(args);
+
+            // Update url with args without reloading page
+            url.search = query;
+            window.history.pushState(null, '', url.href);
+        }
 
         // Get arguments from URL
         function GetUrlArgs() {
@@ -68,11 +612,19 @@
             return query;
         }
 
-        // Get arguments from URL
-        var args = GetUrlArgs();
-
         // Get transactions from api
-        function GetTransactionsAndAddHouses(args) {
+        async function GetTransactionsAndAddHouses(args) {
+
+            // Clear existing markers
+            map.eachLayer(function(layer) {
+                if (layer.options.id == "marker") {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Add length to args
+            args.length = "50000";
+
             // Create query string from arguments
             var query = CreateQueryString(args);
 
@@ -80,14 +632,9 @@
             var transactions_url = "https://api.house-age-search.rggs.xyz/transactions?" + query;
 
             // Get transactions
-            fetch(transactions_url)
-                .then(response => response.json())
-                .then(data => {
-                    // Combine transactions into houses
-                    var houses = CombineTransactions(data["transactions"])
-                        // Add houses to map
-                    AddHouses(houses);
-                });
+            var transactions = await fetch(transactions_url).then(response => response.json());
+            var houses = CombineTransactions(transactions["transactions"]);
+            AddHouses(houses);
         }
 
         // Combine transactions
@@ -146,7 +693,7 @@
         function AddHouses(houses) {
 
             // Create feature group for markers
-            var markers = L.featureGroup();
+            var markers = L.markerClusterGroup();
 
             // Loop through houses
             for (var i = 0; i < houses.length; i++) {
@@ -161,13 +708,7 @@
                 if (lat == null || lng == null) continue;
 
                 // Add marker
-                var marker = L.circleMarker([lat, lng], {
-                    radius: 5,
-                    color: "#007ACC",
-                    weight: 1,
-                    opacity: 0.75,
-                    fillOpacity: 0.75
-                }).addTo(map);
+                var marker = L.marker([lat, lng]);
 
                 // Add popup
                 marker.bindPopup(house["postcode"]);
@@ -178,10 +719,14 @@
 
             // Zoom to fit markers
             map.fitBounds(markers.getBounds());
+            map.addLayer(markers);
         }
 
-        // Get transactions from api and add houses to map
-        GetTransactionsAndAddHouses(args);
+        // Set input values from url args
+        SetInputsFromArgs();
+
+        // Search
+        Search();
     </script>
 </body>
 
