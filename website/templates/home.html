@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Custom Tile Server</title>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+    <style>
+        html,
+        body,
+        #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script>
+        var map = L.map('map', {
+            preferCanvas: true,
+        }).setView([55.7, -2.4234211], 6);
+
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        L.tileLayer('https://osm.house-age-search.rggs.xyz/tile/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+            id: 'base'
+        }).addTo(map);
+
+        var scale = L.control.scale();
+        scale.addTo(map);
+
+        // Get arguments from URL
+        function GetUrlArgs() {
+            var args = {};
+            var query = location.search.substring(1);
+            var pairs = query.split("&");
+            for (var i = 0; i < pairs.length; i++) {
+                var pos = pairs[i].indexOf('=');
+                if (pos == -1) continue;
+                var argname = pairs[i].substring(0, pos);
+                var value = pairs[i].substring(pos + 1);
+                args[argname] = unescape(value);
+            }
+            return args;
+        }
+
+        // Create query string from arguments
+        function CreateQueryString(args) {
+            var query = "";
+            for (var key in args) {
+                if (query != "") query += "&";
+                query += key + "=" + escape(args[key]);
+            }
+            return query;
+        }
+
+        // Get arguments from URL
+        var args = GetUrlArgs();
+
+        // Get transactions from api
+        function GetTransactionsAndAddHouses(args) {
+            // Create query string from arguments
+            var query = CreateQueryString(args);
+
+            // Get url
+            var transactions_url = "https://api.house-age-search.rggs.xyz/transactions?" + query;
+
+            // Get transactions
+            fetch(transactions_url)
+                .then(response => response.json())
+                .then(data => {
+                    // Combine transactions into houses
+                    var houses = CombineTransactions(data["transactions"])
+                        // Add houses to map
+                    AddHouses(houses);
+                });
+        }
+
+        // Combine transactions
+        function CombineTransactions(transactions) {
+
+            let combined = [];
+
+            for (let transaction of transactions) {
+                let already_exists = false;
+
+                // Iterate through houses and check if house already exists
+                for (let house of combined) {
+                    if (house.postcode == transaction.postcode && house.property_type == transaction.property_type && house.paon == transaction.paon && house.saon == transaction.saon) {
+                        already_exists = true;
+                        house.transactions.push(transaction);
+                    }
+                }
+
+                // If house does not exist, add it to combined
+                if (!already_exists) {
+                    // Create house object
+                    let house = {
+                        "county": transaction.county,
+                        "district": transaction.district,
+                        "latitude": transaction.latitude,
+                        "locality": transaction.locality,
+                        "longitude": transaction.longitude,
+                        "paon": transaction.paon,
+                        "postcode": transaction.postcode,
+                        "ppd_category_type": transaction.ppd_category_type,
+                        "property_type": transaction.property_type,
+                        "record_status": transaction.record_status,
+                        "saon": transaction.saon,
+                        "street": transaction.street,
+                        "tenure": transaction.tenure,
+                        "town_city": transaction.town_city,
+                        "transactions": []
+                    }
+
+                    // Add transaction to house
+                    house.transactions.push({
+                        "id": transaction.id,
+                        "price": transaction.price,
+                        "date": transaction.date,
+                        "is_new": transaction.is_new,
+                    });
+
+                    combined.push(house);
+                }
+            }
+
+            return combined;
+        }
+
+        // Add houses to map
+        function AddHouses(houses) {
+
+            // Create feature group for markers
+            var markers = L.featureGroup();
+
+            // Loop through houses
+            for (var i = 0; i < houses.length; i++) {
+                // Get house
+                var house = houses[i];
+
+                // Get coordinates
+                var lat = house["latitude"];
+                var lng = house["longitude"];
+
+                // Skip if no lat/lng
+                if (lat == null || lng == null) continue;
+
+                // Add marker
+                var marker = L.circleMarker([lat, lng], {
+                    radius: 5,
+                    color: "#007ACC",
+                    weight: 1,
+                    opacity: 0.75,
+                    fillOpacity: 0.75
+                }).addTo(map);
+
+                // Add popup
+                marker.bindPopup(house["postcode"]);
+
+                // Add marker to feature group
+                markers.addLayer(marker);
+            }
+
+            // Zoom to fit markers
+            map.fitBounds(markers.getBounds());
+        }
+
+        // Get transactions from api and add houses to map
+        GetTransactionsAndAddHouses(args);
+    </script>
+</body>
+
+</html>

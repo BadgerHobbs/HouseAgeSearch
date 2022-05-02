@@ -1,0 +1,37 @@
+version: "3"
+
+services:
+    
+  house-age-search-api:
+    image: house-age-search-api:latest
+    container_name: house-age-search-api
+    restart: always
+    ports:
+      - 6002:5000
+    networks:
+      - docker-net
+    environment:
+      - VIRTUAL_HOST=api.house-age-search.rggs.xyz
+      - VIRTUAL_PORT=6002
+      - LETSENCRYPT_HOST=api.house-age-search.rggs.xyz
+      - LETSENCRYPT_EMAIL=andyjriggs@gmail.com
+    volumes:
+      - /home/administrator/docker/containers/house-age-search/data:/data
+
+  house-age-search-website:
+    image: house-age-search-website:latest
+    container_name: house-age-search-website
+    restart: always
+    ports:
+      - 6001:5000
+    networks:
+      - docker-net
+    environment:
+      - VIRTUAL_HOST=house-age-search.rggs.xyz
+      - VIRTUAL_PORT=6001
+      - LETSENCRYPT_HOST=house-age-search.rggs.xyz
+      - LETSENCRYPT_EMAIL=andyjriggs@gmail.com
+
+networks:
+  docker-net:
+    external: true    
