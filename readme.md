@@ -12,3 +12,6 @@ docker build -t house-age-search-api:latest . -f api.dockerfile
 docker build -t house-age-search-website:latest . -f website.dockerfile
 docker-compose -p "house-age-search-stack" up -d 
 ```
+
+## Screenshot
+![image](https://user-images.githubusercontent.com/23462440/168486340-707ae703-9e38-4418-93f9-2c8552363864.png)
